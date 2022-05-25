@@ -85,4 +85,12 @@ func TestRateLimiter(t *testing.T) {
   if err == nil {
     t.Errorf("Limit executed %d but don't throw error", requestTimeStamp.Limit)
   }
+
+  limiter.delete(id)
+
+  err = limiter.insert(id)
+
+  if err == nil {
+    t.Errorf("Error not thrown, when inserting with delted id")
+  }
 }

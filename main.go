@@ -3,12 +3,14 @@ package ratelimiter
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	deque "github.com/leexikang/generic-deque"
 )
 
 type RequestTimeStamps struct {
+  mu *sync.Mutex
 	timeStamps      deque.Deque[int64]
 	Limit           int
 	WindowTimeInSec int
@@ -17,6 +19,7 @@ type RequestTimeStamps struct {
 func NewRequestTimeStamps(Limit, WindowTimeInSec int) *RequestTimeStamps {
 	return &RequestTimeStamps{
     Limit: Limit,
+    mu: &sync.Mutex{},
     WindowTimeInSec: WindowTimeInSec,
 		timeStamps: deque.Deque[int64]{},
 	}
@@ -31,14 +34,18 @@ func (requestTimeStamps *RequestTimeStamps) isExceed() bool{
 }
 
 func (requestTimeStamps *RequestTimeStamps) Append(timeStamp int64) {
+  requestTimeStamps.mu.Lock()
 	requestTimeStamps.timeStamps.PushBack(timeStamp)
+  requestTimeStamps.mu.Unlock()
 }
 
 func (requestTimeStamps *RequestTimeStamps) EvictBefore(currentTime int64) {
+  requestTimeStamps.mu.Lock()
 	for requestTimeStamps.Size() != 0 &&
 		requestTimeStamps.timeStamps.Front() < currentTime {
 		requestTimeStamps.timeStamps.PopFront()
 	}
+  requestTimeStamps.mu.Unlock()
 }
 
 type RateLimiter struct {
@@ -55,13 +62,16 @@ func (ratelimiter *RateLimiter) create(id string, timestamps RequestTimeStamps) 
   ratelimiter.requestTimeStamps[id] = &timestamps
 }
 
+func (ratelimiter *RateLimiter) delete(id string ) {
+  delete(ratelimiter.requestTimeStamps, id)
+}
 
 func (ratelimiter *RateLimiter) insert(id string) error{
   requestTimeStamps, ok := ratelimiter.requestTimeStamps[id] 
-  if !ok {
-    panic("user has not been initialized yet")
-  }
 
+  if !ok {
+    return errors.New("user has not been initialized yet")
+  }
   currentTime := time.Now().UnixMilli()
   requestTimeStamps.Append(currentTime)
   requestTimeStamps.EvictBefore(currentTime - int64(requestTimeStamps.WindowTimeInSec * 1000))
