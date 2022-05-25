@@ -3,6 +3,7 @@ package ratelimiter
 import (
 	"testing"
 	"time"
+  "strconv"
 )
 
 func TestAppendTimeStamps(t *testing.T) {
@@ -10,15 +11,15 @@ func TestAppendTimeStamps(t *testing.T) {
 	currentTime := time.Now().Unix()
 	times := []int64{
 		currentTime,
-		currentTime + 1,
-		currentTime + 2,
+		currentTime,
+		currentTime,
 	}
 
 	for i := 0; i < len(times); i++ {
 		request.Append(times[i])
 	}
 
-	if request.Size() != len(times) {
+	if request.Size() != len(times)   {
 		t.Errorf("Expected size to be %d but found %d", len(times), request.Size())
 	}
 }
@@ -61,4 +62,27 @@ func TestEvictBefore(t *testing.T) {
 	if request.Size() != 0 {
 		t.Errorf("Expected size to be %d but found %d", 0, request.Size())
 	}
+}
+
+type Request struct {
+  ID int64
+}
+
+func (request Request) Id() string {
+  return strconv.FormatInt(request.ID, 10)
+}
+
+func TestRateLimiter(t *testing.T) {
+  requestTimeStamp := NewRequestTimeStamps(2, 1)
+
+  limiter :=  NewRateLimiter()
+  id := "1"
+  limiter.create(id, *requestTimeStamp)
+  limiter.insert(id)
+  limiter.insert(id)
+  err := limiter.insert(id)
+
+  if err == nil {
+    t.Errorf("Limit executed %d but don't throw error", requestTimeStamp.Limit)
+  }
 }
