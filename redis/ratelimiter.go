@@ -28,6 +28,30 @@ type RateLimiter struct {
 	client redis.Client
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
+func New(conf RedisConfig) *RateLimiter {
+	client := redis.NewClient(&redis.Options{
+		Addr:     conf.Host + ":" + conf.Port,
+		Password: conf.Password, // no password set
+		DB:       conf.DB,       // use default DB
+	})
+
+	_, err := client.Ping(context.Background()).Result()
+	if err != nil {
+		panic(err)
+	}
+
+	return &RateLimiter{
+		client: *client,
+	}
+}
+
 func (ratelimiter *RateLimiter) create(ctx context.Context, id string, limit, windowInSec int) {
 	ratelimiter.client.HSet(ctx, userMetaPrefix+id, "limit", limit, "windowInSec", windowInSec)
 }
@@ -66,21 +90,20 @@ func (ratelimiter *RateLimiter) isAllowed(ctx context.Context, id string) error 
 		return err
 	}
 
+	pipe := ratelimiter.client.Pipeline()
+
 	member := redis.Z{
 		Score:  float64(currentTime),
 		Member: currentTime,
 	}
-	_, err = ratelimiter.client.ZAdd(ctx, timestampsPrefix+id, &member).Result()
+	pipe.ZAdd(ctx, timestampsPrefix+id, &member)
+	count := pipe.ZCount(ctx, timestampsPrefix+id, "0", "9999999999999")
+	_, err = pipe.Exec(ctx)
 	if err != nil {
 		return err
 	}
 
-	count, err := ratelimiter.client.ZCount(ctx, timestampsPrefix+id, "0", "9999999999999").Result()
-	if err != nil {
-		return err
-	}
-
-	if count > limit {
+	if count.Val() > limit {
 		return errors.New("Limited exceed")
 	}
 
