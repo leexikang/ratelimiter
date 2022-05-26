@@ -1,13 +1,13 @@
-package ratelimiter
+package memory
 
 import (
+	"strconv"
 	"testing"
 	"time"
-  "strconv"
 )
 
 func TestAppendTimeStamps(t *testing.T) {
-	request := NewRequestTimeStamps(10, 10)
+	request := newRequestTimeStamps(10, 10)
 	currentTime := time.Now().Unix()
 	times := []int64{
 		currentTime,
@@ -19,13 +19,13 @@ func TestAppendTimeStamps(t *testing.T) {
 		request.Append(times[i])
 	}
 
-	if request.Size() != len(times)   {
+	if request.Size() != len(times) {
 		t.Errorf("Expected size to be %d but found %d", len(times), request.Size())
 	}
 }
 
 func TestEvictBefore(t *testing.T) {
-	request := NewRequestTimeStamps(10, 10)
+	request := newRequestTimeStamps(10, 10)
 	currentTime := int64(0)
 	times := []int64{
 		currentTime,
@@ -65,32 +65,32 @@ func TestEvictBefore(t *testing.T) {
 }
 
 type Request struct {
-  ID int64
+	ID int64
 }
 
 func (request Request) Id() string {
-  return strconv.FormatInt(request.ID, 10)
+	return strconv.FormatInt(request.ID, 10)
 }
 
 func TestRateLimiter(t *testing.T) {
-  requestTimeStamp := NewRequestTimeStamps(2, 1)
+	limit := 2
+	windowInSec := 1
+	limiter := New()
+	id := "1"
+	limiter.create(id, limit, windowInSec)
+	limiter.insert(id)
+	limiter.insert(id)
+	err := limiter.insert(id)
 
-  limiter :=  NewRateLimiter()
-  id := "1"
-  limiter.create(id, *requestTimeStamp)
-  limiter.insert(id)
-  limiter.insert(id)
-  err := limiter.insert(id)
+	if err == nil {
+		t.Errorf("Limit executed %d but don't throw error", limit)
+	}
 
-  if err == nil {
-    t.Errorf("Limit executed %d but don't throw error", requestTimeStamp.Limit)
-  }
+	limiter.delete(id)
 
-  limiter.delete(id)
+	err = limiter.insert(id)
 
-  err = limiter.insert(id)
-
-  if err == nil {
-    t.Errorf("Error not thrown, when inserting with delted id")
-  }
+	if err == nil {
+		t.Errorf("Error not thrown, when inserting with delted id")
+	}
 }

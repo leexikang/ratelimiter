@@ -1,4 +1,4 @@
-package ratelimiter
+package memory
 
 import (
 	"errors"
@@ -9,37 +9,37 @@ import (
 	deque "github.com/leexikang/generic-deque"
 )
 
-type RequestTimeStamps struct {
+type requestTimeStamps struct {
 	mu              *sync.Mutex
 	timeStamps      deque.Deque[int64]
-	Limit           int
-	WindowTimeInSec int
+	limit           int
+	windowTimeInSec int
 }
 
-func NewRequestTimeStamps(Limit, WindowTimeInSec int) *RequestTimeStamps {
-	return &RequestTimeStamps{
-		Limit:           Limit,
+func newRequestTimeStamps(Limit, WindowTimeInSec int) *requestTimeStamps {
+	return &requestTimeStamps{
+		limit:           Limit,
 		mu:              &sync.Mutex{},
-		WindowTimeInSec: WindowTimeInSec,
+		windowTimeInSec: WindowTimeInSec,
 		timeStamps:      deque.Deque[int64]{},
 	}
 }
 
-func (requestTimeStamps *RequestTimeStamps) Size() int {
+func (requestTimeStamps *requestTimeStamps) Size() int {
 	return requestTimeStamps.timeStamps.Len()
 }
 
-func (requestTimeStamps *RequestTimeStamps) isExceed() bool {
-	return requestTimeStamps.timeStamps.Len() > requestTimeStamps.Limit
+func (requestTimeStamps *requestTimeStamps) isExceed() bool {
+	return requestTimeStamps.timeStamps.Len() > requestTimeStamps.limit
 }
 
-func (requestTimeStamps *RequestTimeStamps) Append(timeStamp int64) {
+func (requestTimeStamps *requestTimeStamps) Append(timeStamp int64) {
 	requestTimeStamps.mu.Lock()
 	requestTimeStamps.timeStamps.PushBack(timeStamp)
 	requestTimeStamps.mu.Unlock()
 }
 
-func (requestTimeStamps *RequestTimeStamps) EvictBefore(currentTime int64) {
+func (requestTimeStamps *requestTimeStamps) EvictBefore(currentTime int64) {
 	requestTimeStamps.mu.Lock()
 	for requestTimeStamps.Size() != 0 &&
 		requestTimeStamps.timeStamps.Front() < currentTime {
@@ -49,17 +49,17 @@ func (requestTimeStamps *RequestTimeStamps) EvictBefore(currentTime int64) {
 }
 
 type RateLimiter struct {
-	requestTimeStamps map[string]*RequestTimeStamps
+	requestTimeStamps map[string]*requestTimeStamps
 }
 
-func NewRateLimiter() *RateLimiter {
+func New() *RateLimiter {
 	return &RateLimiter{
-		requestTimeStamps: make(map[string]*RequestTimeStamps),
+		requestTimeStamps: make(map[string]*requestTimeStamps),
 	}
 }
 
-func (ratelimiter *RateLimiter) create(id string, timestamps RequestTimeStamps) {
-	ratelimiter.requestTimeStamps[id] = &timestamps
+func (ratelimiter *RateLimiter) create(id string, limit, windowTimeInSec int) {
+	ratelimiter.requestTimeStamps[id] = newRequestTimeStamps(limit, windowTimeInSec)
 }
 
 func (ratelimiter *RateLimiter) delete(id string) {
@@ -75,12 +75,12 @@ func (ratelimiter *RateLimiter) insert(id string) error {
 
 	currentTime := time.Now().UnixMilli()
 	requestTimeStamps.Append(currentTime)
-	requestTimeStamps.EvictBefore(currentTime - int64(requestTimeStamps.WindowTimeInSec*1000))
+	requestTimeStamps.EvictBefore(currentTime - int64(requestTimeStamps.windowTimeInSec*1000))
 	if requestTimeStamps.isExceed() {
 		errMessage := fmt.Sprintf(
 			"Your are exceed than the limit of %d in %d seconds",
-			requestTimeStamps.Limit,
-			requestTimeStamps.WindowTimeInSec,
+			requestTimeStamps.limit,
+			requestTimeStamps.windowTimeInSec,
 		)
 		return errors.New(errMessage)
 	}
