@@ -8,7 +8,7 @@ import (
 func TestRateLimiter(t *testing.T) {
 	conf := RedisConfig{
 		Host:     "localhost",
-		Port:     "7001",
+		Port:     "6379",
 		Password: "",
 		DB:       0,
 	}
@@ -23,7 +23,11 @@ func TestRateLimiter(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	rateLimiter.isAllowed(ctx, id)
+
+	err = rateLimiter.isAllowed(ctx, id)
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = rateLimiter.isAllowed(ctx, id)
 	if err == nil {

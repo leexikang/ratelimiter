@@ -16,14 +16,6 @@ const (
 	limitKey         = "limit"
 )
 
-func main() {
-	redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-}
-
 type RateLimiter struct {
 	client redis.Client
 }
@@ -56,7 +48,7 @@ func (ratelimiter *RateLimiter) create(ctx context.Context, id string, limit, wi
 	ratelimiter.client.HSet(ctx, userMetaPrefix+id, "limit", limit, "windowInSec", windowInSec)
 }
 
-func (ratelimiter *RateLimiter) delte(ctx context.Context, id string, limit, windowInSec int) {
+func (ratelimiter *RateLimiter) delete(ctx context.Context, id string, limit, windowInSec int) {
 	ratelimiter.client.HDel(ctx, userMetaPrefix+id)
 	ratelimiter.client.ZRem(ctx, timestampsPrefix+id)
 }
