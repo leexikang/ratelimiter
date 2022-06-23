@@ -3,6 +3,7 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -58,15 +59,15 @@ func New() *RateLimiter {
 	}
 }
 
-func (ratelimiter *RateLimiter) create(id string, limit, windowTimeInSec int) {
+func (ratelimiter *RateLimiter) Create(id string, limit, windowTimeInSec int) {
 	ratelimiter.requestTimeStamps[id] = newRequestTimeStamps(limit, windowTimeInSec)
 }
 
-func (ratelimiter *RateLimiter) delete(id string) {
+func (ratelimiter *RateLimiter) Delete(id string) {
 	delete(ratelimiter.requestTimeStamps, id)
 }
 
-func (ratelimiter *RateLimiter) insert(id string) error {
+func (ratelimiter *RateLimiter) IsAllowed(id string) error {
 	requestTimeStamps, ok := ratelimiter.requestTimeStamps[id]
 
 	if !ok {
@@ -74,8 +75,9 @@ func (ratelimiter *RateLimiter) insert(id string) error {
 	}
 
 	currentTime := time.Now().UnixMilli()
-	requestTimeStamps.Append(currentTime)
+	log.Print(requestTimeStamps.windowTimeInSec)
 	requestTimeStamps.EvictBefore(currentTime - int64(requestTimeStamps.windowTimeInSec*1000))
+	requestTimeStamps.Append(currentTime)
 	if requestTimeStamps.isExceed() {
 		errMessage := fmt.Sprintf(
 			"Your are exceed than the limit of %d in %d seconds",

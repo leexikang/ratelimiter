@@ -1,0 +1,6 @@
+remote: "http://localhost:4001"
+port: "8080"
+rules:
+  - path: '/ping'
+    limit: 1
+    windowinsecond: 60
