@@ -18,7 +18,7 @@ func TestRateLimiter(t *testing.T) {
 	id := "1"
 	limit := 2
 	windowInSec := 1
-	rateLimiter.create(ctx, id, limit, windowInSec)
+	rateLimiter.Create(ctx, id, limit, windowInSec)
 	err := rateLimiter.isAllowed(ctx, id)
 	if err != nil {
 		t.Error(err)

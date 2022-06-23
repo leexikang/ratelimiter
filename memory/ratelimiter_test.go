@@ -77,18 +77,18 @@ func TestRateLimiter(t *testing.T) {
 	windowInSec := 1
 	limiter := New()
 	id := "1"
-	limiter.create(id, limit, windowInSec)
-	limiter.insert(id)
-	limiter.insert(id)
-	err := limiter.insert(id)
+	limiter.Create(id, limit, windowInSec)
+	limiter.IsAllowed(id)
+	limiter.IsAllowed(id)
+	err := limiter.IsAllowed(id)
 
 	if err == nil {
 		t.Errorf("Limit executed %d but don't throw error", limit)
 	}
 
-	limiter.delete(id)
+	limiter.Delete(id)
 
-	err = limiter.insert(id)
+	err = limiter.IsAllowed(id)
 
 	if err == nil {
 		t.Errorf("Error not thrown, when inserting with delted id")

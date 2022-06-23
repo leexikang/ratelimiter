@@ -44,11 +44,11 @@ func New(conf RedisConfig) *RateLimiter {
 	}
 }
 
-func (ratelimiter *RateLimiter) create(ctx context.Context, id string, limit, windowInSec int) {
+func (ratelimiter *RateLimiter) Create(ctx context.Context, id string, limit, windowInSec int) {
 	ratelimiter.client.HSet(ctx, userMetaPrefix+id, "limit", limit, "windowInSec", windowInSec)
 }
 
-func (ratelimiter *RateLimiter) delete(ctx context.Context, id string, limit, windowInSec int) {
+func (ratelimiter *RateLimiter) Delete(ctx context.Context, id string, limit, windowInSec int) {
 	ratelimiter.client.HDel(ctx, userMetaPrefix+id)
 	ratelimiter.client.ZRem(ctx, timestampsPrefix+id)
 }
